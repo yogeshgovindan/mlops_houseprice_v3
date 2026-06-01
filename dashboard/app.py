@@ -7,7 +7,7 @@ from datetime import datetime
 # -----------------------------
 # CONFIG
 # -----------------------------
-API_URL = "https://mlops-houseprice-api.azurewebsites.net/predict"
+API_URL = "https://yogesh-house-price-api.azurewebsites.net/predict"
 
 st.set_page_config(
     page_title="MLOps House Price Dashboard",
