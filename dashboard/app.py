@@ -1,289 +1,155 @@
-
 import streamlit as st
+import requests
 import pandas as pd
-import json
-import glob
-import matplotlib.pyplot as plt
+import plotly.express as px
+from datetime import datetime
 
-import sys
-import os
+# -----------------------------
+# CONFIG
+# -----------------------------
+API_URL = "https://mlops-houseprice-api.azurewebsites.net/predict"
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-
-# -------------------------
-# PAGE CONFIG
-# -------------------------
 st.set_page_config(
-    page_title="MLOps Dashboard",
+    page_title="MLOps House Price Dashboard",
     layout="wide"
 )
 
-st.title(
-    "🏠 House Price MLOps Dashboard"
-)
+st.title("🏠 MLOps House Price Prediction Platform")
 
-st.write(
-    "Real-time model monitoring"
-)
+# -----------------------------
+# SIDEBAR - SYSTEM STATUS
+# -----------------------------
+st.sidebar.header("⚙️ System Status")
 
-# -------------------------
-# LOAD LOGS
-# -------------------------
-log_file = (
-    "logs/predictions.json"
-)
+if st.sidebar.button("Check API Health"):
+    try:
+        r = requests.get(API_URL.replace("/predict", "/health"))
+        st.sidebar.success(r.json())
+    except:
+        st.sidebar.error("API Down")
 
-logs = []
+# -----------------------------
+# INPUT SECTION
+# -----------------------------
+st.header("📊 Input Features")
 
-if os.path.exists(
-    log_file
-):
-
-    with open(
-        log_file,
-        "r"
-    ) as f:
-
-        for line in f:
-
-            logs.append(
-                json.loads(line)
-            )
-
-# -------------------------
-# MODEL VERSION
-# -------------------------
-models = glob.glob(
-    "artifacts/model_v*.pkl"
-)
-
-active_model = (
-    len(models)
-)
-
-# -------------------------
-# STATS
-# -------------------------
-total_predictions = (
-    len(logs)
-)
-
-latest_prediction = (
-    logs[-1]["prediction"]
-    if logs
-    else "N/A"
-)
-
-# -------------------------
-# METRIC CARDS
-# -------------------------
-col1, col2, col3 = (
-    st.columns(3)
-)
+col1, col2, col3 = st.columns(3)
 
 with col1:
-
-    st.metric(
-        "Total Predictions",
-        total_predictions
-    )
+    longitude = st.number_input("Longitude", -124.0, -114.0, -122.23)
+    latitude = st.number_input("Latitude", 32.0, 42.0, 37.88)
+    housing_median_age = st.number_input("Median Age", 1, 100, 41)
 
 with col2:
-
-    st.metric(
-        "Latest Prediction",
-        latest_prediction
-    )
+    total_rooms = st.number_input("Total Rooms", 1, 10000, 880)
+    total_bedrooms = st.number_input("Total Bedrooms", 1, 5000, 129)
+    population = st.number_input("Population", 1, 50000, 322)
 
 with col3:
-
-    st.metric(
-        "Active Model",
-        f"v{active_model}"
+    households = st.number_input("Households", 1, 5000, 126)
+    median_income = st.number_input("Median Income", 0.1, 20.0, 8.3)
+    ocean_proximity = st.selectbox(
+        "Ocean Proximity",
+        ["NEAR BAY", "<1H OCEAN", "INLAND", "NEAR OCEAN", "ISLAND"]
     )
 
-# -------------------------
-# DRIFT STATUS
-# -------------------------
-st.subheader(
-    "🚨 Drift Monitoring"
-)
+# -----------------------------
+# PREDICTION BUTTON
+# -----------------------------
+if st.button("🚀 Predict House Price"):
 
-if logs:
+    payload = {
+        "longitude": longitude,
+        "latitude": latitude,
+        "housing_median_age": housing_median_age,
+        "total_rooms": total_rooms,
+        "total_bedrooms": total_bedrooms,
+        "population": population,
+        "households": households,
+        "median_income": median_income,
+        "ocean_proximity": ocean_proximity
+    }
 
-    latest_log = logs[-1]
+    try:
+        response = requests.post(API_URL, json=payload)
+        result = response.json()
 
-    if (
-        "drift_report"
-        in latest_log
-    ):
+        st.success("Prediction Successful 🎯")
 
-        drift_report = (
-            latest_log[
-                "drift_report"
-            ]
+        # -----------------------------
+        # METRICS SECTION
+        # -----------------------------
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.metric(
+                "🏠 Predicted Price",
+                f"${result['predicted_house_price']:,.2f}"
+            )
+
+        with col2:
+            st.metric(
+                "📅 Timestamp",
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+
+        # -----------------------------
+        # DRIFT REPORT
+        # -----------------------------
+        st.subheader("📊 Drift Monitoring")
+
+        drift_df = pd.DataFrame(result["drift_report"]).T
+        drift_df.reset_index(inplace=True)
+        drift_df.columns = ["Feature", "Drift Detected", "Shift"]
+
+        st.dataframe(drift_df, use_container_width=True)
+
+        # -----------------------------
+        # DRIFT VISUALIZATION
+        # -----------------------------
+        fig = px.bar(
+            drift_df,
+            x="Feature",
+            y="Shift",
+            color="Drift Detected",
+            title="Feature Drift Analysis"
         )
 
-        drift_found = any(
+        st.plotly_chart(fig, use_container_width=True)
 
-            feature.get(
-                "drift_detected",
-                False
-            )
+        # -----------------------------
+        # SAVE HISTORY
+        # -----------------------------
+        if "history" not in st.session_state:
+            st.session_state.history = []
 
-            for feature in (
-                drift_report.values()
-            )
+        st.session_state.history.append({
+            "time": datetime.now(),
+            "price": result["predicted_house_price"]
+        })
 
-            if isinstance(
-                feature,
-                dict
-            )
-        )
+    except Exception as e:
+        st.error(f"API Error: {e}")
 
-        if drift_found:
+# -----------------------------
+# HISTORY SECTION
+# -----------------------------
+st.header("📈 Prediction History")
 
-            st.error(
-                "⚠ Drift Detected"
-            )
+if "history" in st.session_state and len(st.session_state.history) > 0:
 
-        else:
+    history_df = pd.DataFrame(st.session_state.history)
 
-            st.success(
-                "✅ Model Stable"
-            )
-
-# -------------------------
-# PREDICTION LOGS
-# -------------------------
-st.subheader(
-    "📝 Prediction Logs"
-)
-
-if logs:
-
-    df = pd.DataFrame(
-        logs
+    fig2 = px.line(
+        history_df,
+        x="time",
+        y="price",
+        title="Predicted Price Trend"
     )
 
-    st.dataframe(
-        df,
-        use_container_width=True
-    )
+    st.plotly_chart(fig2, use_container_width=True)
+
+    st.dataframe(history_df)
 
 else:
-
-    st.warning(
-        "No prediction logs found."
-    )
-
-
-# -------------------------
-# VISUAL MONITORING
-# -------------------------
-st.subheader(
-    "📈 Prediction Analytics"
-)
-
-if logs:
-
-    df = pd.DataFrame(
-        logs
-    )
-
-    if "prediction" in df.columns:
-
-        # -------------------------
-        # Trend Chart
-        # -------------------------
-        st.write(
-            "### Prediction Trend"
-        )
-
-        fig, ax = plt.subplots()
-
-        ax.plot(
-            df["prediction"]
-        )
-
-        ax.set_xlabel(
-            "Prediction Number"
-        )
-
-        ax.set_ylabel(
-            "House Price"
-        )
-
-        st.pyplot(fig)
-
-        # -------------------------
-        # Distribution
-        # -------------------------
-        st.write(
-            "### Prediction Distribution"
-        )
-
-        fig2, ax2 = plt.subplots()
-
-        ax2.hist(
-            df["prediction"]
-        )
-
-        ax2.set_xlabel(
-            "House Price"
-        )
-
-        ax2.set_ylabel(
-            "Frequency"
-        )
-
-        st.pyplot(fig2)
-
-
-# -------------------------
-# RETRAINING HISTORY
-# -------------------------
-st.subheader(
-    "🔁 Retraining History"
-)
-
-retrain_file = (
-    "logs/retraining_logs.json"
-)
-
-retrain_logs = []
-
-if os.path.exists(
-    retrain_file
-):
-
-    with open(
-        retrain_file,
-        "r"
-    ) as f:
-
-        for line in f:
-
-            retrain_logs.append(
-                json.loads(line)
-            )
-
-if retrain_logs:
-
-    retrain_df = (
-        pd.DataFrame(
-            retrain_logs
-        )
-    )
-
-    st.dataframe(
-        retrain_df,
-        use_container_width=True
-    )
-
-else:
-
-    st.info(
-        "No retraining history found."
-    )
+    st.info("No predictions yet. Run a prediction to see history.")
