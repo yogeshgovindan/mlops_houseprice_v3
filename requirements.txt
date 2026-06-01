@@ -14,3 +14,6 @@ numpy
 scikit-learn
 joblib
 requests
+matplotlib
+plotly
+
