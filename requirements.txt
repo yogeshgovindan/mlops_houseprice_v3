@@ -8,3 +8,9 @@ mlflow
 pytest
 requests
 python-multipart
+streamlit
+pandas
+numpy
+scikit-learn
+joblib
+requests
