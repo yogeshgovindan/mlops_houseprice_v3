@@ -26,7 +26,7 @@ This project demonstrates a **real-world MLOps lifecycle**, including:
 
 ---
 
-```markdown
+
 ## 📸 Project Screenshots
 
 ### FastAPI Swagger UI
@@ -50,10 +50,9 @@ This project demonstrates a **real-world MLOps lifecycle**, including:
 ### GitHub Actions CI/CD
 
 ![GitHub Actions](assets/github_actions.png)
-```
 
 
-````markdown id="a6"
+
 ## 🏗️ System Architecture
 
 
