@@ -26,6 +26,33 @@ This project demonstrates a **real-world MLOps lifecycle**, including:
 
 ---
 
+```markdown
+## 📸 Project Screenshots
+
+### FastAPI Swagger UI
+
+![Swagger UI](assets/swagger.png)
+
+---
+
+### Monitoring Dashboard
+
+![Dashboard](assets/dashboard.png)
+
+---
+
+### MLflow Experiment Tracking
+
+![MLflow](assets/mlflow.png)
+
+---
+
+### GitHub Actions CI/CD
+
+![GitHub Actions](assets/github_actions.png)
+```
+
+
 ````markdown id="a6"
 ## 🏗️ System Architecture
 
@@ -201,6 +228,7 @@ streamlit run dashboard/app.py
 * Model rollback
 * Advanced drift metrics
 * Kubernetes deployment
+
 
 ---
 
