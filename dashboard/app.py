@@ -84,7 +84,7 @@ if st.button("🚀 Predict House Price"):
         with col1:
             st.metric(
                 "🏠 Predicted Price",
-                f"${result['predicted_house_price']:,.2f}"
+                f"${result.get('predicted_house_price', 0):,.2f}"
             )
 
         with col2:
@@ -94,28 +94,35 @@ if st.button("🚀 Predict House Price"):
             )
 
         # -----------------------------
-        # DRIFT REPORT
+        # DRIFT REPORT (FIXED SAFELY)
         # -----------------------------
         st.subheader("📊 Drift Monitoring")
 
-        drift_df = pd.DataFrame(result["drift_report"]).T
-        drift_df.reset_index(inplace=True)
-        drift_df.columns = ["Feature", "Drift Detected", "Shift"]
+        drift_report = result.get("drift_report", None)
 
-        st.dataframe(drift_df, use_container_width=True)
+        if drift_report:
 
-        # -----------------------------
-        # DRIFT VISUALIZATION
-        # -----------------------------
-        fig = px.bar(
-            drift_df,
-            x="Feature",
-            y="Shift",
-            color="Drift Detected",
-            title="Feature Drift Analysis"
-        )
+            drift_df = pd.DataFrame(drift_report).T
+            drift_df.reset_index(inplace=True)
+            drift_df.columns = ["Feature", "Drift Detected", "Shift"]
 
-        st.plotly_chart(fig, use_container_width=True)
+            st.dataframe(drift_df, use_container_width=True)
+
+            # -----------------------------
+            # DRIFT VISUALIZATION
+            # -----------------------------
+            fig = px.bar(
+                drift_df,
+                x="Feature",
+                y="Shift",
+                color="Drift Detected",
+                title="Feature Drift Analysis"
+            )
+
+            st.plotly_chart(fig, use_container_width=True)
+
+        else:
+            st.warning("Drift report not available from API")
 
         # -----------------------------
         # SAVE HISTORY
@@ -125,7 +132,7 @@ if st.button("🚀 Predict House Price"):
 
         st.session_state.history.append({
             "time": datetime.now(),
-            "price": result["predicted_house_price"]
+            "price": result.get("predicted_house_price", 0)
         })
 
     except Exception as e:
